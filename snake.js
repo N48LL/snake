@@ -39,8 +39,11 @@ function saveScore(name, score) {
 }
 
 function generatePickup() {
-  const x = Math.floor(Math.random() * canvas.width / boardSize);
-  const y = Math.floor(Math.random() * canvas.height / boardSize);
+  let x, y;
+  do {
+    x = Math.floor(Math.random() * canvas.width / boardSize);
+    y = Math.floor(Math.random() * canvas.height / boardSize);
+  } while (snake.some((segment) => segment.x === x && segment.y === y));
   pickups.push({ x, y });
 }
 
