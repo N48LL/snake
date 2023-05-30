@@ -29,52 +29,13 @@ function checkCollisions() {
   }
 }
 
-const http = require("http");
-const fs = require("fs");
-
-const server = http.createServer((req, res) => {
-  if (req.method === "POST" && req.url === "/save-score.php") {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk.toString();
-    });
-    req.on("end", () => {
-      const { name, score, time } = JSON.parse(body);
-      const csvData = `${name},${score},${time}\n`;
-      fs.appendFile("scores.txt", csvData, (err) => {
-        if (err) {
-          res.statusCode = 500;
-          res.end("Error saving score.");
-        } else {
-          res.statusCode = 200;
-          res.end("Score saved!");
-        }
-      });
-    });
-  } else {
-    res.statusCode = 404;
-    res.end("Not found.");
-  }
-});
-
-server.listen(3000, () => {
-  console.log("Server listening on port 3000.");
-});
 
 function saveScore(name, score, time) {
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", "/save-score.php");
-  xhr.setRequestHeader("Content-Type", "application/json");
-  xhr.onload = function () {
-    if (xhr.status === 200) {
-      alert("Score saved!");
-    } else {
-      alert("Error saving score.");
-    }
-  };
-  xhr.send(JSON.stringify({ name, score, time }));
+  const scores = JSON.parse(localStorage.getItem("scores")) || [];
+  scores.push({ name, score, time });
+  localStorage.setItem("scores", JSON.stringify(scores));
+  alert("Score saved!");
 }
-
 function generatePickup() {
   for (let i = 0; i < 3; i++) {
     let x, y;
@@ -130,6 +91,39 @@ function update() {
   move();
   checkCollisions();
   draw();
+}
+
+function showScores() {
+  const scores = JSON.parse(localStorage.getItem("scores")) || [];
+  scores.sort((a, b) => b.score - a.score);
+  const table = document.createElement("table");
+  const headerRow = document.createElement("tr");
+  const nameHeader = document.createElement("th");
+  nameHeader.textContent = "Name";
+  const scoreHeader = document.createElement("th");
+  scoreHeader.textContent = "Score";
+  const timeHeader = document.createElement("th");
+  timeHeader.textContent = "Time";
+  headerRow.appendChild(nameHeader);
+  headerRow.appendChild(scoreHeader);
+  headerRow.appendChild(timeHeader);
+  table.appendChild(headerRow);
+  for (const { name, score, time } of scores) {
+    const row = document.createElement("tr");
+    const nameCell = document.createElement("td");
+    nameCell.textContent = name;
+    const scoreCell = document.createElement("td");
+    scoreCell.textContent = score;
+    const timeCell = document.createElement("td");
+    timeCell.textContent = time;
+    row.appendChild(nameCell);
+    row.appendChild(scoreCell);
+    row.appendChild(timeCell);
+    table.appendChild(row);
+  }
+  const scoresDiv = document.getElementById("scores");
+  scoresDiv.innerHTML = "";
+  scoresDiv.appendChild(table);
 }
 
 function updateScoreTable() {
