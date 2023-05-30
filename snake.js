@@ -30,20 +30,13 @@ function checkCollisions() {
 }
 
 function saveScore(name, score, time) {
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", "save-score.php");
-  xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === XMLHttpRequest.DONE) {
-      if (xhr.status === 200) {
-        alert("Score saved!");
-      } else {
-        console.error(`Failed to save score: ${xhr.status} ${xhr.statusText}`);
-        alert("Failed to save score. Please try again later.");
-      }
-    }
-  };
-  xhr.send(`name=${encodeURIComponent(name)}&score=${score}&time=${time}`);
+  const csvData = `${name},${score},${time}\n`;
+  const blob = new Blob([csvData], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.download = "scores.txt";
+  link.href = url;
+  link.click();
 }
 
 function generatePickup() {
