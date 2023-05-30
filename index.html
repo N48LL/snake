@@ -3,13 +3,35 @@
   <head>
     <title>Snake Game</title>
     <style>
-      #game-board {
+      canvas {
         border: 1px solid black;
+      }
+      table {
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th, td {
+        border: 1px solid black;
+        padding: 5px;
       }
     </style>
   </head>
   <body>
-    <canvas id="game-board" width="800" height="800"></canvas>
+    <canvas id="game-board" width="400" height="400"></canvas>
+    <br>
+    <button id="start-button">Start Game</button>
+    <button id="restart-button">Restart Game</button>
+    <table id="score-table">
+      <caption>Top3 Score</caption>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
     <script src="snake.js"></script>
   </body>
 </html>

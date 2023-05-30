@@ -6,7 +6,44 @@ const snake = [{ x: 10, y: 10 }];
 const pickups = [];
 let direction = "right";
 
-// Draw the snake and pickups on the canvas
+function checkCollisions() {
+  const head = snake[0];
+  if (head.x < 0 || head.x >= canvas.width / boardSize || head.y < 0 || head.y >= canvas.height / boardSize) {
+    clearInterval(gameLoop);
+    const name = prompt("Game over! Enter your name:");
+    if (name && (localStorage.getItem("scores") === null || getScores().length < 5 || snake.length - 1 > getScores()[4][1])) {
+      saveScore(name, snake.length - 1);
+      alert("Score saved!");
+    }
+  }
+  for (let i = 1; i < snake.length; i++) {
+    if (head.x === snake[i].x && head.y === snake[i].y) {
+      clearInterval(gameLoop);
+      const name = prompt("Game over! Enter your name:");
+      if (name && (localStorage.getItem("scores") === null || getScores().length < 5 || snake.length - 1 > getScores()[4][1])) {
+        saveScore(name, snake.length - 1);
+        alert("Score saved!");
+      }
+    }
+  }
+}
+
+function saveScore(name, score) {
+  const data = `${name},${score}\n`;
+  // Save score to local storage
+  if (localStorage.getItem("scores")) {
+    localStorage.setItem("scores", localStorage.getItem("scores") + data);
+  } else {
+    localStorage.setItem("scores", data);
+  }
+}
+
+function generatePickup() {
+  const x = Math.floor(Math.random() * canvas.width / boardSize);
+  const y = Math.floor(Math.random() * canvas.height / boardSize);
+  pickups.push({ x, y });
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "green";
@@ -19,7 +56,6 @@ function draw() {
   });
 }
 
-// Move the snake based on user input
 function move() {
   const head = { x: snake[0].x, y: snake[0].y };
   switch (direction) {
@@ -38,69 +74,90 @@ function move() {
   }
   snake.unshift(head);
   if (pickups.some((pickup) => pickup.x === head.x && pickup.y === head.y)) {
-    const index = pickups.findIndex((pickup) => pickup.x === head.x && pickup.y === head.y);
-    pickups.splice(index, 1);
-    snake.push(snake[snake.length - 1]);
+    pickups.splice(pickups.findIndex((pickup) => pickup.x === head.x && pickup.y === head.y), 1);
     generatePickup();
   } else {
     snake.pop();
   }
 }
 
-// Check for collisions with game board boundaries and snake's own body
-function checkCollisions() {
-  const head = snake[0];
-  if (head.x < 0 || head.x >= canvas.width / boardSize || head.y < 0 || head.y >= canvas.height / boardSize) {
-    clearInterval(gameLoop);
-    alert("Game over!");
-  }
-  for (let i = 1; i < snake.length; i++) {
-    if (head.x === snake[i].x && head.y === snake[i].y) {
-      clearInterval(gameLoop);
-      alert("Game over!");
-    }
-  }
-}
-
-// Generate new pickups and check for collisions with the snake
-function generatePickup() {
-  const pickup = { x: Math.floor(Math.random() * canvas.width / boardSize), y: Math.floor(Math.random() * canvas.height / boardSize) };
-  if (snake.some((segment) => segment.x === pickup.x && segment.y === pickup.y) || pickups.some((existingPickup) => existingPickup.x === pickup.x && existingPickup.y === pickup.y)) {
-    generatePickup();
-  } else {
-    pickups.push(pickup);
-  }
-}
-
-// Update the game state and redraw the canvas
 function update() {
   move();
   checkCollisions();
   draw();
 }
 
-// Add event listeners for user input
-document.addEventListener("keydown", (event) => {
-  switch (event.key) {
-    case "ArrowUp":
-      direction = "up";
-      break;
-    case "ArrowDown":
-      direction = "down";
-      break;
-    case "ArrowLeft":
-      direction = "left";
-      break;
-    case "ArrowRight":
-      direction = "right";
-      break;
-  }
-});
+function startGame() {
+  const startButton = document.getElementById("start-button");
+  const restartButton = document.getElementById("restart-button");
+  restartButton.style.display = "none";
+  startButton.addEventListener("click", () => {
+    generatePickup();
+    generatePickup();
+    generatePickup();
+    gameLoop = setInterval(update, 100);
+    draw();
+    startButton.style.display = "none";
+    restartButton.style.display = "block";
+  });
+  restartButton.addEventListener("click", () => {
+    clearInterval(gameLoop);
+    snake.length = 1;
+    direction = "right";
+    generatePickup();
+    generatePickup();
+    generatePickup();
+    gameLoop = setInterval(update, 100);
+    draw();
+    generateScoreTable();
+    location.reload();
+  });
+  generateScoreTable();
+  document.addEventListener("keydown", (event) => {
+    switch (event.key) {
+      case "ArrowUp":
+        if (direction !== "down") {
+          direction = "up";
+        }
+        break;
+      case "ArrowDown":
+        if (direction !== "up") {
+          direction = "down";
+        }
+        break;
+      case "ArrowLeft":
+        if (direction !== "right") {
+          direction = "left";
+        }
+        break;
+      case "ArrowRight":
+        if (direction !== "left") {
+          direction = "right";
+        }
+        break;
+    }
+  });
+}
 
-// Call the update function in a loop
-const gameLoop = setInterval(update, 100);
+function getScores() {
+  return localStorage.getItem("scores").split("\n").filter(Boolean).map((line) => line.split(",")).sort((a, b) => b[1] - a[1]);
+}
 
-// Generate initial pickups
-generatePickup();
-generatePickup();
-generatePickup();
+function generateScoreTable() {
+  const table = document.getElementById("score-table");
+  const tbody = table.getElementsByTagName("tbody")[0];
+  tbody.innerHTML = "";
+  const scores = localStorage.getItem("scores") ? getScores().slice(0, 3) : [];
+  scores.forEach((score) => {
+    const tr = document.createElement("tr");
+    const nameTd = document.createElement("td");
+    const scoreTd = document.createElement("td");
+    nameTd.textContent = score[0];
+    scoreTd.textContent = score[1];
+    tr.appendChild(nameTd);
+    tr.appendChild(scoreTd);
+    tbody.appendChild(tr);
+  });
+}
+
+startGame();
