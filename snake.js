@@ -29,14 +29,50 @@ function checkCollisions() {
   }
 }
 
+const http = require("http");
+const fs = require("fs");
+
+const server = http.createServer((req, res) => {
+  if (req.method === "POST" && req.url === "/save-score.php") {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", () => {
+      const { name, score, time } = JSON.parse(body);
+      const csvData = `${name},${score},${time}\n`;
+      fs.appendFile("scores.txt", csvData, (err) => {
+        if (err) {
+          res.statusCode = 500;
+          res.end("Error saving score.");
+        } else {
+          res.statusCode = 200;
+          res.end("Score saved!");
+        }
+      });
+    });
+  } else {
+    res.statusCode = 404;
+    res.end("Not found.");
+  }
+});
+
+server.listen(3000, () => {
+  console.log("Server listening on port 3000.");
+});
+
 function saveScore(name, score, time) {
-  const csvData = `${name},${score},${time}\n`;
-  const blob = new Blob([csvData], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.download = "scores.txt";
-  link.href = url;
-  link.click();
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/save-score.php");
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.onload = function () {
+    if (xhr.status === 200) {
+      alert("Score saved!");
+    } else {
+      alert("Error saving score.");
+    }
+  };
+  xhr.send(JSON.stringify({ name, score, time }));
 }
 
 function generatePickup() {
