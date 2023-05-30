@@ -102,14 +102,6 @@ function startGame() {
   });
   restartButton.addEventListener("click", () => {
     clearInterval(gameLoop);
-    snake.length = 1;
-    direction = "right";
-    generatePickup();
-    generatePickup();
-    generatePickup();
-    gameLoop = setInterval(update, 100);
-    draw();
-    generateScoreTable();
     location.reload();
   });
   generateScoreTable();
