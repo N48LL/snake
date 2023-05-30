@@ -12,7 +12,7 @@ function checkCollisions() {
   if (head.x < 0 || head.x >= canvas.width / boardSize || head.y < 0 || head.y >= canvas.height / boardSize) {
     clearInterval(gameLoop);
     const name = prompt(`Game over! Your time was ${Math.floor((Date.now() - startTime) / 1000)} seconds. Enter your name:`);
-    if (name && (localStorage.getItem("scores") === null || getScores().length < 5 || snake.length - 1 > getScores()[4][1])) {
+    if (name) {
       saveScore(name, snake.length - 1, Math.floor((Date.now() - startTime) / 1000));
       alert("Score saved!");
     }
@@ -21,7 +21,7 @@ function checkCollisions() {
     if (head.x === snake[i].x && head.y === snake[i].y) {
       clearInterval(gameLoop);
       const name = prompt(`Game over! Your time was ${Math.floor((Date.now() - startTime) / 1000)} seconds. Enter your name:`);
-      if (name && (localStorage.getItem("scores") === null || getScores().length < 5 || snake.length - 1 > getScores()[4][1])) {
+      if (name) {
         saveScore(name, snake.length - 1, Math.floor((Date.now() - startTime) / 1000));
         alert("Score saved!");
       }
@@ -29,13 +29,26 @@ function checkCollisions() {
   }
 }
 
-function saveScore(name, score, time) {
+async function saveScore(name, score, time) {
   const data = `${name},${score},${time}\n`;
-  // Save score to local storage
-  if (localStorage.getItem("scores")) {
-    localStorage.setItem("scores", localStorage.getItem("scores") + data);
-  } else {
-    localStorage.setItem("scores", data);
+  const fileName = "scores.csv";
+  try {
+    const fileHandle = await window.showSaveFilePicker({
+      suggestedName: fileName,
+      types: [
+        {
+          description: "CSV Files",
+          accept: {
+            "text/csv": [".csv"],
+          },
+        },
+      ],
+    });
+    const writable = await fileHandle.createWritable();
+    await writable.write(data);
+    await writable.close();
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -78,7 +91,10 @@ function move() {
   }
   snake.unshift(head);
   if (pickups.some((pickup) => pickup.x === head.x && pickup.y === head.y)) {
-    pickups.splice(pickups.findIndex((pickup) => pickup.x === head.x && pickup.y === head.y), 1);
+    pickups.splice(
+      pickups.findIndex((pickup) => pickup.x === head.x && pickup.y === head.y),
+      1
+    );
     generatePickup();
   } else {
     snake.pop();
@@ -89,6 +105,26 @@ function update() {
   move();
   checkCollisions();
   draw();
+}
+
+function updateScoreTable() {
+  getScores("scores.csv").then((scores) => {
+    const scoreTable = document.getElementById("score-table");
+    scoreTable.innerHTML = "";
+    scores.forEach((score) => {
+      const row = document.createElement("tr");
+      const nameCell = document.createElement("td");
+      nameCell.textContent = score[0];
+      const scoreCell = document.createElement("td");
+      scoreCell.textContent = score[1];
+      const timeCell = document.createElement("td");
+      timeCell.textContent = score[2];
+      row.appendChild(nameCell);
+      row.appendChild(scoreCell);
+      row.appendChild(timeCell);
+      scoreTable.appendChild(row);
+    });
+  });
 }
 
 function startGame() {
@@ -109,7 +145,7 @@ function startGame() {
     clearInterval(gameLoop);
     location.reload();
   });
-  updateScoreTable(); // Call the correct function here
+  updateScoreTable();
   document.addEventListener("keydown", (event) => {
     switch (event.key) {
       case "ArrowUp":
@@ -136,36 +172,27 @@ function startGame() {
   });
 }
 
-function getScores() {
-  const scores = localStorage.getItem("scores");
-  if (scores) {
-    const scoreData = scores.split("\n").map((score) => score.split(","));
-    scoreData.pop(); 
-    scoreData.sort((a, b) => b[1] - a[1]); 
-    return scoreData.slice(0, 3).map((score) => [score[0], score[1], score[2]]); 
-  } else {
-    return [];
+async function getScores(fileName) {
+  let scores = [];
+  const localScores = localStorage.getItem("scores");
+  if (localScores) {
+    const scoreData = localScores.split("\n").map((score) => score.split(","));
+    scoreData.pop();
+    scoreData.sort((a, b) => b[1] - a[1]);
+    scores = scoreData.slice(0, 3).map((score) => [score[0], score[1], score[2]]);
   }
-}
-
-function updateScoreTable() {
-  const scoreTable = document.getElementById("score-table");
-  const tbody = scoreTable.getElementsByTagName("tbody")[0];
-  tbody.innerHTML = "";
-  const scores = getScores();
-  for (let i = 0; i < scores.length; i++) {
-    const tr = document.createElement("tr");
-    const nameTd = document.createElement("td");
-    const scoreTd = document.createElement("td");
-    const timeTd = document.createElement("td");
-    nameTd.textContent = scores[i][0];
-    scoreTd.textContent = scores[i][1];
-    timeTd.textContent = scores[i][2] + "s";
-    tr.appendChild(nameTd);
-    tr.appendChild(scoreTd);
-    tr.appendChild(timeTd);
-    tbody.appendChild(tr);
+  try {
+    const response = await fetch(fileName);
+    const csvData = await response.text();
+    const scoreData = csvData.split("\n").map((score) => score.split(","));
+    scoreData.pop();
+    scoreData.sort((a, b) => b[1] - a[1]);
+    const fileScores = scoreData.slice(0, 3).map((score) => [score[0], score[1], score[2]]);
+    scores = [...scores, ...fileScores].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  } catch (error) {
+    console.error(error);
   }
+  return scores;
 }
 
 startGame();
