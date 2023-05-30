@@ -29,36 +29,32 @@ function checkCollisions() {
   }
 }
 
-async function saveScore(name, score, time) {
-  const data = `${name},${score},${time}\n`;
-  const fileName = "scores.csv";
-  try {
-    const fileHandle = await window.showSaveFilePicker({
-      suggestedName: fileName,
-      types: [
-        {
-          description: "CSV Files",
-          accept: {
-            "text/csv": [".csv"],
-          },
-        },
-      ],
-    });
-    const writable = await fileHandle.createWritable();
-    await writable.write(data);
-    await writable.close();
-  } catch (error) {
-    console.error(error);
-  }
+function saveScore(name, score, time) {
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "save-score.php");
+  xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === XMLHttpRequest.DONE) {
+      if (xhr.status === 200) {
+        alert("Score saved!");
+      } else {
+        console.error(`Failed to save score: ${xhr.status} ${xhr.statusText}`);
+        alert("Failed to save score. Please try again later.");
+      }
+    }
+  };
+  xhr.send(`name=${encodeURIComponent(name)}&score=${score}&time=${time}`);
 }
 
 function generatePickup() {
-  let x, y;
-  do {
-    x = Math.floor(Math.random() * canvas.width / boardSize);
-    y = Math.floor(Math.random() * canvas.height / boardSize);
-  } while (snake.some((segment) => segment.x === x && segment.y === y));
-  pickups.push({ x, y });
+  for (let i = 0; i < 3; i++) {
+    let x, y;
+    do {
+      x = Math.floor(Math.random() * canvas.width / boardSize);
+      y = Math.floor(Math.random() * canvas.height / boardSize);
+    } while (snake.some((segment) => segment.x === x && segment.y === y));
+    pickups.push({ x, y });
+  }
 }
 
 function draw() {
@@ -108,23 +104,27 @@ function update() {
 }
 
 function updateScoreTable() {
-  getScores("scores.csv").then((scores) => {
-    const scoreTable = document.getElementById("score-table");
-    scoreTable.innerHTML = "";
-    scores.forEach((score) => {
-      const row = document.createElement("tr");
-      const nameCell = document.createElement("td");
-      nameCell.textContent = score[0];
-      const scoreCell = document.createElement("td");
-      scoreCell.textContent = score[1];
-      const timeCell = document.createElement("td");
-      timeCell.textContent = score[2];
-      row.appendChild(nameCell);
-      row.appendChild(scoreCell);
-      row.appendChild(timeCell);
-      scoreTable.appendChild(row);
+  const table = document.getElementById("score-table");
+  table.innerHTML = "";
+  getScores("scores.txt")
+    .then((scores) => {
+      scores.forEach((score) => {
+        const row = document.createElement("tr");
+        const nameCell = document.createElement("td");
+        const scoreCell = document.createElement("td");
+        const dateCell = document.createElement("td");
+        nameCell.textContent = score[0];
+        scoreCell.textContent = score[1];
+        dateCell.textContent = score[2];
+        row.appendChild(nameCell);
+        row.appendChild(scoreCell);
+        row.appendChild(dateCell);
+        table.appendChild(row);
+      });
+    })
+    .catch((error) => {
+      console.error(error);
     });
-  });
 }
 
 function startGame() {
@@ -183,16 +183,20 @@ async function getScores(fileName) {
   }
   try {
     const response = await fetch(fileName);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch scores from ${fileName}: ${response.status} ${response.statusText}`);
+    }
     const csvData = await response.text();
     const scoreData = csvData.split("\n").map((score) => score.split(","));
     scoreData.pop();
     scoreData.sort((a, b) => b[1] - a[1]);
     const fileScores = scoreData.slice(0, 3).map((score) => [score[0], score[1], score[2]]);
     scores = [...scores, ...fileScores].sort((a, b) => b[1] - a[1]).slice(0, 3);
+    return scores;
   } catch (error) {
-    console.error(error);
+    console.error(`Failed to fetch scores from ${fileName}`);
+    throw new Error(`Failed to fetch scores from ${fileName}`);
   }
-  return scores;
 }
 
 startGame();
